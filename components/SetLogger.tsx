@@ -139,7 +139,6 @@ export function SetLogger({ exerciseId, onLogged }: SetLoggerProps) {
               −
             </button>
             <input
-              ref={repsRef}
               type="number"
               inputMode="numeric"
               value={reps}
