@@ -7,6 +7,10 @@ export type MuscleGroup =
   | "core"
   | "other";
 
+export type WorkoutIntensity = "light" | "moderate" | "vigorous";
+
+export type ProgressMetric = "maxWeight" | "volume" | "e1rm";
+
 export interface Exercise {
   id: string;
   name: string;
@@ -32,13 +36,43 @@ export interface Workout {
   endedAt?: string;
   exercises: WorkoutExercise[];
   notes?: string;
+  templateId?: string;
+  intensity?: WorkoutIntensity;
 }
 
-export interface AppData {
+export interface WorkoutTemplate {
+  id: string;
+  name: string;
+  exerciseIds: string[];
+}
+
+export interface UserSettings {
+  bodyWeightLbs?: number;
+  defaultIntensity: WorkoutIntensity;
+  showCalorieEstimate: boolean;
+}
+
+export interface AppDataV1 {
   version: 1;
   exercises: Exercise[];
   workouts: Workout[];
   activeWorkoutId: string | null;
+}
+
+export interface AppData {
+  version: 2;
+  exercises: Exercise[];
+  workouts: Workout[];
+  activeWorkoutId: string | null;
+  templates: WorkoutTemplate[];
+  settings: UserSettings;
+}
+
+export interface ExerciseHistoryPoint {
+  date: string;
+  maxWeight: number;
+  volume: number;
+  bestE1rm: number;
 }
 
 export interface ExerciseStats {
@@ -47,6 +81,7 @@ export interface ExerciseStats {
   lastReps: number;
   maxWeight: number;
   bestSetVolume: number;
+  bestE1rm: number;
   totalSets: number;
-  history: { date: string; maxWeight: number; volume: number }[];
+  history: ExerciseHistoryPoint[];
 }

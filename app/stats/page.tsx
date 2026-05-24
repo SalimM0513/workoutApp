@@ -1,29 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useAppData } from "@/hooks/useAppData";
 import {
   calculateStreak,
+  dailyVolumeToday,
   formatVolume,
   getExerciseStats,
-  totalVolumeAllTime,
-  volumeThisWeek,
-  workoutsThisWeek,
 } from "@/lib/stats";
-import { MUSCLE_GROUPS } from "@/lib/constants";
+import { INTENSITY_OPTIONS } from "@/lib/constants";
+import type { WorkoutIntensity } from "@/lib/types";
 import { Card } from "@/components/Card";
-import { ProgressChart } from "@/components/ProgressChart";
+import { ExerciseProgressPanel } from "@/components/ExerciseProgressPanel";
 
 export default function StatsPage() {
-  const { data, hydrated, getExercise } = useAppData();
+  const { data, hydrated, getExercise, updateSettings } = useAppData();
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(
     null
   );
 
-  const weekCount = workoutsThisWeek(data.workouts);
-  const weekVolume = volumeThisWeek(data.workouts);
+  const todayVol = dailyVolumeToday(data.workouts);
   const streak = calculateStreak(data.workouts);
-  const allTimeVolume = totalVolumeAllTime(data.workouts);
+  const completedCount = data.workouts.filter((w) => w.endedAt).length;
 
   const exercisesWithStats = useMemo(() => {
     const seen = new Set<string>();
@@ -63,21 +62,14 @@ export default function StatsPage() {
       <h1 className="mb-6 text-2xl font-bold">Stats</h1>
 
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <Card>
+        <Card className="col-span-2 border-accent/20">
           <p className="text-xs uppercase tracking-wide text-zinc-500">
-            This week
+            Today&apos;s volume
           </p>
-          <p className="mt-1 text-2xl font-bold">{weekCount}</p>
-          <p className="text-xs text-zinc-500">workouts</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-zinc-500">
-            Week volume
+          <p className="mt-1 text-3xl font-bold text-accent">
+            {formatVolume(todayVol)}
           </p>
-          <p className="mt-1 text-2xl font-bold text-accent">
-            {formatVolume(weekVolume)}
-          </p>
-          <p className="text-xs text-zinc-500">lbs</p>
+          <p className="text-xs text-zinc-500">lbs (weight × reps today)</p>
         </Card>
         <Card>
           <p className="text-xs uppercase tracking-wide text-zinc-500">
@@ -87,16 +79,87 @@ export default function StatsPage() {
         </Card>
         <Card>
           <p className="text-xs uppercase tracking-wide text-zinc-500">
-            All-time volume
+            Workouts
           </p>
-          <p className="mt-1 text-2xl font-bold">
-            {formatVolume(allTimeVolume)}
-          </p>
-          <p className="text-xs text-zinc-500">lbs</p>
+          <p className="mt-1 text-2xl font-bold">{completedCount}</p>
         </Card>
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold">Exercise progress</h2>
+      <Card className="mb-6">
+        <h2 className="font-semibold">Settings</h2>
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className="mb-2 block text-sm text-zinc-400">
+              Body weight (lbs) — for calorie estimate
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="e.g. 180"
+              value={
+                data.settings.bodyWeightLbs != null
+                  ? String(data.settings.bodyWeightLbs)
+                  : ""
+              }
+              onChange={(e) => {
+                const raw = e.target.value.trim();
+                if (!raw) {
+                  updateSettings({ bodyWeightLbs: undefined });
+                  return;
+                }
+                const v = parseFloat(raw);
+                if (Number.isFinite(v) && v > 0) {
+                  updateSettings({ bodyWeightLbs: v });
+                }
+              }}
+              className="h-12 w-full rounded-xl border border-surface-border bg-surface px-4"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-zinc-400">
+              Default workout intensity
+            </label>
+            <div className="flex gap-2">
+              {INTENSITY_OPTIONS.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() =>
+                    updateSettings({
+                      defaultIntensity: o.id as WorkoutIntensity,
+                    })
+                  }
+                  className={`min-h-[44px] flex-1 rounded-xl text-sm font-medium ${
+                    data.settings.defaultIntensity === o.id
+                      ? "bg-accent text-black"
+                      : "bg-zinc-800 text-zinc-300"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="flex min-h-[44px] items-center gap-3">
+            <input
+              type="checkbox"
+              checked={data.settings.showCalorieEstimate}
+              onChange={(e) =>
+                updateSettings({ showCalorieEstimate: e.target.checked })
+              }
+              className="h-5 w-5 rounded accent-accent"
+            />
+            <span className="text-sm">Show estimated calories when finishing</span>
+          </label>
+        </div>
+      </Card>
+
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Exercise progress</h2>
+        <Link href="/library" className="text-sm text-accent">
+          Library →
+        </Link>
+      </div>
 
       {exercisesWithStats.length === 0 ? (
         <p className="text-zinc-500 text-sm">
@@ -124,85 +187,35 @@ export default function StatsPage() {
           </div>
 
           {selectedStats && selectedName && (
-            <Card>
-              <h3 className="font-semibold">{selectedName}</h3>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
-                <div>
-                  <p className="text-zinc-500">PR</p>
-                  <p className="font-bold text-accent">
-                    {selectedStats.maxWeight} lbs
-                  </p>
-                </div>
-                <div>
-                  <p className="text-zinc-500">Last</p>
-                  <p className="font-bold">
-                    {selectedStats.lastWeight}×{selectedStats.lastReps}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-zinc-500">Sets</p>
-                  <p className="font-bold">{selectedStats.totalSets}</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <p className="mb-2 text-xs text-zinc-500">Max weight over time</p>
-                <ProgressChart stats={selectedStats} />
-              </div>
-            </Card>
+            <div className="mb-6">
+              <ExerciseProgressPanel name={selectedName} stats={selectedStats} />
+            </div>
           )}
 
-          <ul className="mt-6 space-y-2">
+          <ul className="space-y-2">
             {exercisesWithStats.map(({ id, name, stats }) => (
               <li key={id}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedExerciseId(id)}
+                <Link
+                  href={`/library/${id}`}
                   className="flex w-full min-h-[52px] items-center justify-between rounded-xl border border-surface-border bg-surface-raised px-4 text-left active:bg-zinc-800"
                 >
                   <span className="font-medium">{name}</span>
                   <span className="text-sm text-zinc-400">
                     PR {stats!.maxWeight} lbs
                   </span>
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
         </>
       )}
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold">Exercise library</h2>
-        <p className="text-sm text-zinc-500 mb-3">
-          {data.exercises.length} exercises ·{" "}
-          {data.exercises.filter((e) => e.isCustom).length} custom
-        </p>
-        {MUSCLE_GROUPS.map((group) => {
-          const items = data.exercises.filter(
-            (e) => e.muscleGroup === group.id
-          );
-          if (items.length === 0) return null;
-          return (
-            <div key={group.id} className="mb-4">
-              <p className="text-xs font-semibold uppercase text-zinc-500 mb-2">
-                {group.label}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {items.map((e) => (
-                  <span
-                    key={e.id}
-                    className="rounded-lg bg-zinc-800/80 px-3 py-1.5 text-sm text-zinc-300"
-                  >
-                    {e.name}
-                    {e.isCustom && (
-                      <span className="ml-1 text-accent text-xs">*</span>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </section>
+      <Link
+        href="/templates"
+        className="mt-8 block text-center text-sm font-medium text-accent"
+      >
+        Workout templates →
+      </Link>
     </div>
   );
 }

@@ -8,9 +8,36 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { ExerciseStats } from "@/lib/types";
+import type { ExerciseStats, ProgressMetric } from "@/lib/types";
 
-export function ProgressChart({ stats }: { stats: ExerciseStats }) {
+const METRIC_CONFIG: Record<
+  ProgressMetric,
+  { key: keyof ExerciseStats["history"][0]; label: string; format: (v: number) => string }
+> = {
+  maxWeight: {
+    key: "maxWeight",
+    label: "Best working weight",
+    format: (v) => `${v} lbs`,
+  },
+  volume: {
+    key: "volume",
+    label: "Session volume",
+    format: (v) => v.toLocaleString(),
+  },
+  e1rm: {
+    key: "bestE1rm",
+    label: "Est. 1RM",
+    format: (v) => `${v} lbs`,
+  },
+};
+
+export function ProgressChart({
+  stats,
+  metric,
+}: {
+  stats: ExerciseStats;
+  metric: ProgressMetric;
+}) {
   if (stats.history.length < 2) {
     return (
       <p className="py-4 text-center text-sm text-zinc-500">
@@ -19,10 +46,10 @@ export function ProgressChart({ stats }: { stats: ExerciseStats }) {
     );
   }
 
+  const config = METRIC_CONFIG[metric];
   const data = stats.history.map((h) => ({
     date: h.date.slice(5),
-    maxWeight: h.maxWeight,
-    volume: Math.round(h.volume),
+    value: h[config.key] as number,
   }));
 
   return (
@@ -41,6 +68,10 @@ export function ProgressChart({ stats }: { stats: ExerciseStats }) {
             tickLine={false}
           />
           <Tooltip
+            formatter={(value) => [
+              config.format(Number(value)),
+              config.label,
+            ]}
             contentStyle={{
               background: "#18181f",
               border: "1px solid #2a2a35",
@@ -50,11 +81,11 @@ export function ProgressChart({ stats }: { stats: ExerciseStats }) {
           />
           <Line
             type="monotone"
-            dataKey="maxWeight"
+            dataKey="value"
             stroke="#22c55e"
             strokeWidth={2}
             dot={{ fill: "#22c55e", r: 3 }}
-            name="Max weight"
+            name={config.label}
           />
         </LineChart>
       </ResponsiveContainer>

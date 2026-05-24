@@ -4,14 +4,43 @@ A mobile-first workout logging web app built with Next.js. Optimized for **fast 
 
 ## Features
 
+### Core
 - **Workout sessions** — start, add exercises, log sets (weight + reps), end with optional notes
-- **Exercise library** — 20+ default exercises by muscle group + custom exercises
-- **Fast set logging** — previous workout autofill, ±5 lb buttons, +2.5/+5/+10 shortcuts
-- **Progress** — per-exercise PRs, last performance, charts (Recharts)
-- **History** — browse past workouts with full set details
-- **Stats** — weekly workouts/volume, streak, all-time volume
+- **Fast set logging** — previous workout autofill, ±5 lb buttons, +2.5/+5/+10 shortcuts, full manual entry for weight and reps
+- **localStorage** — all data stays on your device (no backend)
 
-Data is stored in **localStorage** (no backend). The storage layer in `lib/storage.ts` and types in `lib/types.ts` are structured so you can swap in a database later.
+### Exercise library
+- Browse all exercises (defaults + custom)
+- **Add exercises anytime** from the Library tab (`/library`)
+- Per-exercise history: last working sets, PRs, and progress graphs
+- Autofill latest weight/reps when you select an exercise in a workout
+
+### Progress graphs
+- Per-exercise charts: **best working weight**, **estimated 1RM** (Epley), or **session volume**
+- Updates automatically when you complete workouts with that exercise
+
+### Workout history
+- View past workouts with full set details
+- **Edit** saved workouts (add/remove exercises, add/edit/remove sets)
+- **Delete** workouts
+
+### Daily volume
+- **Today’s volume** (weight × reps) on Home and Stats — no weekly/all-time volume on the main dashboard
+
+### Calendar
+- Month view showing **lift days** vs rest days
+- Tap a day to see workouts from that date
+
+### Workout templates
+- Built-in templates: Push, Pull, Legs, Upper, Lower
+- Create custom splits (e.g. Push Day) with pre-selected exercises
+- Start a workout from a template — exercises load automatically; you can still edit during the session
+- Manage templates at `/templates`
+
+### Estimated calories (optional)
+- Rough estimate from **duration + intensity + body weight** (MET-based)
+- Clearly labeled as approximate — **not** calculated from weight × reps
+- Configure body weight and default intensity in **Stats → Settings**
 
 ## Run locally
 
@@ -30,24 +59,24 @@ Open [http://localhost:3000](http://localhost:3000) on your phone (same Wi‑Fi)
 3. Framework preset: **Next.js** (auto-detected).
 4. Deploy — no env vars required.
 
-Or use the CLI:
-
-```bash
-npm i -g vercel
-vercel
-```
-
 ## Project structure
 
 ```
-app/              # App Router pages (Home, Workout, History, Stats)
-components/       # UI: SetLogger, ExercisePicker, charts, nav
-hooks/            # useAppData — central state + localStorage sync
+app/
+  page.tsx              # Home — today's volume, start workout
+  workout/              # Active session
+  calendar/             # Lift calendar
+  history/              # Past workouts + edit
+  stats/                # Daily volume, settings, progress
+  library/              # Exercise library + per-exercise detail
+  templates/            # Workout templates
+components/             # SetLogger, WorkoutSession, charts, calendar
+hooks/useAppData.tsx    # State + localStorage sync
 lib/
-  types.ts        # Domain types (ready for DB schema)
-  storage.ts      # load/save localStorage
-  stats.ts        # volume, streaks, PRs, history
-  constants.ts    # default exercises, muscle groups
+  types.ts              # Domain types (v2)
+  storage.ts            # load/save + migration from v1
+  stats.ts              # volume, streaks, PRs, calories
+  workout-mutations.ts  # Workout CRUD helpers
 ```
 
 ## Tech stack
@@ -55,15 +84,15 @@ lib/
 - Next.js 15 (App Router)
 - React 19
 - Tailwind CSS 3
-- Recharts (lightweight progress charts)
+- Recharts
 - TypeScript
 
 ## Tips for fastest logging
 
-1. Start a workout from **Home**.
-2. **Add Exercise** → pick one (last session values autofill).
-3. Tap **Log Set** — adjust weight with +5 or chips, reps with ±1.
-4. Expand another exercise or add more without leaving the screen.
+1. **Home** → **Start Workout** (pick a template or empty).
+2. **Add Exercise** or use template exercises — last session values autofill.
+3. Type exact weight/reps or use ± buttons → **Log Set**.
+4. **Finish** → optional notes and intensity for calorie estimate.
 
 ---
 

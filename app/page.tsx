@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAppData } from "@/hooks/useAppData";
 import {
   calculateStreak,
+  dailyVolumeToday,
   formatDate,
   formatVolume,
   getLastWorkout,
@@ -12,20 +14,24 @@ import {
 } from "@/lib/stats";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { StartWorkoutModal } from "@/components/StartWorkoutModal";
 
 export default function HomePage() {
   const router = useRouter();
   const { data, hydrated, activeWorkout, startWorkout } = useAppData();
+  const [showStart, setShowStart] = useState(false);
 
   const lastWorkout = getLastWorkout(data.workouts);
   const streak = calculateStreak(data.workouts);
+  const todayVol = dailyVolumeToday(data.workouts);
 
-  const handleStart = () => {
+  const handleStart = (templateId?: string) => {
+    setShowStart(false);
     if (activeWorkout) {
       router.push("/workout");
       return;
     }
-    startWorkout();
+    startWorkout(templateId ? { templateId } : undefined);
     router.push("/workout");
   };
 
@@ -46,6 +52,19 @@ export default function HomePage() {
         </h1>
       </header>
 
+      <Card className="mb-4 border-accent/20">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Today&apos;s volume
+        </p>
+        <p className="mt-1 text-3xl font-bold text-accent">
+          {formatVolume(todayVol)}
+          <span className="ml-1 text-base font-normal text-zinc-400">
+            lbs
+          </span>
+        </p>
+        <p className="mt-1 text-xs text-zinc-500">weight × reps for today</p>
+      </Card>
+
       {activeWorkout && (
         <Card className="mb-4 border-accent/30 bg-accent/10">
           <p className="text-sm text-accent">Workout in progress</p>
@@ -62,7 +81,14 @@ export default function HomePage() {
         </Card>
       )}
 
-      <Button size="lg" className="mb-8 w-full" onClick={handleStart}>
+      <Button
+        size="lg"
+        className="mb-8 w-full"
+        onClick={() => {
+          if (activeWorkout) router.push("/workout");
+          else setShowStart(true);
+        }}
+      >
         {activeWorkout ? "Go to Workout" : "Start Workout"}
       </Button>
 
@@ -114,10 +140,26 @@ export default function HomePage() {
         </Card>
       )}
 
+      <div className="mt-6 flex justify-center gap-4 text-sm">
+        <Link href="/calendar" className="text-accent">
+          Calendar
+        </Link>
+        <Link href="/library" className="text-accent">
+          Exercise library
+        </Link>
+      </div>
+
       {!lastWorkout && !activeWorkout && (
-        <p className="text-center text-zinc-500">
+        <p className="mt-6 text-center text-zinc-500">
           Tap Start Workout to log your first session.
         </p>
+      )}
+
+      {showStart && (
+        <StartWorkoutModal
+          onStart={handleStart}
+          onClose={() => setShowStart(false)}
+        />
       )}
     </div>
   );

@@ -5,20 +5,25 @@ import { getExerciseStats } from "@/lib/stats";
 import type { WorkoutExercise } from "@/lib/types";
 import { useAppData } from "@/hooks/useAppData";
 import { SetLogger } from "./SetLogger";
+import { SetRowEditor } from "./SetRowEditor";
 import { Card } from "./Card";
 
 interface WorkoutExerciseCardProps {
+  workoutId: string;
   entry: WorkoutExercise;
   expanded?: boolean;
   onToggle?: () => void;
+  editable?: boolean;
 }
 
 export function WorkoutExerciseCard({
+  workoutId,
   entry,
   expanded = false,
   onToggle,
+  editable = true,
 }: WorkoutExerciseCardProps) {
-  const { data, getExercise, removeSet } = useAppData();
+  const { data, getExercise, removeExerciseFromWorkout } = useAppData();
   const exercise = getExercise(entry.exerciseId);
   const stats = getExerciseStats(data, entry.exerciseId);
   const [localExpanded, setLocalExpanded] = useState(expanded);
@@ -42,7 +47,8 @@ export function WorkoutExerciseCard({
           <h3 className="text-lg font-semibold">{exercise.name}</h3>
           {stats && (
             <p className="mt-0.5 text-sm text-zinc-400">
-              PR {stats.maxWeight} lbs · {entry.sets.length} sets today
+              Last {stats.lastWeight}×{stats.lastReps} · PR {stats.maxWeight}{" "}
+              lbs · {entry.sets.length} sets
             </p>
           )}
         </div>
@@ -50,32 +56,48 @@ export function WorkoutExerciseCard({
       </button>
 
       {entry.sets.length > 0 && (
-        <ul className="border-t border-surface-border px-4 py-2">
-          {entry.sets.map((set, i) => (
-            <li
-              key={set.id}
-              className="flex items-center justify-between py-2 text-sm"
-            >
-              <span className="text-zinc-400">Set {i + 1}</span>
-              <span className="font-medium">
-                {set.weight} lbs × {set.reps}
-              </span>
-              <button
-                type="button"
-                onClick={() => removeSet(entry.exerciseId, set.id)}
-                className="min-h-[36px] px-2 text-zinc-500 active:text-red-400"
-                aria-label="Remove set"
+        <ul className="border-t border-surface-border px-4 py-1">
+          {entry.sets.map((set, i) =>
+            editable ? (
+              <SetRowEditor
+                key={set.id}
+                workoutId={workoutId}
+                exerciseId={entry.exerciseId}
+                set={set}
+                index={i}
+              />
+            ) : (
+              <li
+                key={set.id}
+                className="flex justify-between py-2 text-sm border-b border-surface-border/50 last:border-0"
               >
-                ×
-              </button>
-            </li>
-          ))}
+                <span className="text-zinc-400">Set {i + 1}</span>
+                <span className="font-medium">
+                  {set.weight} lbs × {set.reps}
+                </span>
+              </li>
+            )
+          )}
         </ul>
       )}
 
-      {isOpen && (
+      {isOpen && editable && (
         <div className="border-t border-surface-border p-4">
-          <SetLogger exerciseId={entry.exerciseId} />
+          <SetLogger exerciseId={entry.exerciseId} workoutId={workoutId} />
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                entry.sets.length > 0 &&
+                !confirm(`Remove ${exercise.name} from this workout?`)
+              )
+                return;
+              removeExerciseFromWorkout(entry.exerciseId, workoutId);
+            }}
+            className="mt-4 text-sm text-zinc-500 underline"
+          >
+            Remove exercise
+          </button>
         </div>
       )}
     </Card>

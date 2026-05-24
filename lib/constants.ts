@@ -1,6 +1,16 @@
-import type { Exercise, MuscleGroup } from "./types";
+import type { Exercise, MuscleGroup, WorkoutIntensity } from "./types";
 
-export const STORAGE_KEY = "workout-tracker-data-v1";
+export const STORAGE_KEY = "workout-tracker-data-v2";
+
+export const INTENSITY_OPTIONS: {
+  id: WorkoutIntensity;
+  label: string;
+  met: number;
+}[] = [
+  { id: "light", label: "Light", met: 3 },
+  { id: "moderate", label: "Moderate", met: 5 },
+  { id: "vigorous", label: "Vigorous", met: 6 },
+];
 
 export const MUSCLE_GROUPS: { id: MuscleGroup; label: string }[] = [
   { id: "chest", label: "Chest" },

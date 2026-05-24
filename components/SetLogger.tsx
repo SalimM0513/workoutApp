@@ -8,19 +8,19 @@ import { Button } from "./Button";
 
 interface SetLoggerProps {
   exerciseId: string;
+  workoutId: string;
   onLogged?: () => void;
 }
 
-export function SetLogger({ exerciseId, onLogged }: SetLoggerProps) {
+export function SetLogger({ exerciseId, workoutId, onLogged }: SetLoggerProps) {
   const { data, addSet, getExercise } = useAppData();
   const exercise = getExercise(exerciseId);
+
   const { lastSets, sessionLabel } = useMemo(() => {
     const priorSets = getLastSetsForExercise(data.workouts, exerciseId);
-    const todaySets =
-      data.activeWorkoutId &&
-      data.workouts
-        .find((w) => w.id === data.activeWorkoutId)
-        ?.exercises.find((e) => e.exerciseId === exerciseId)?.sets;
+    const todaySets = data.workouts
+      .find((w) => w.id === workoutId)
+      ?.exercises.find((e) => e.exerciseId === exerciseId)?.sets;
 
     if (todaySets && todaySets.length > 0) {
       return { lastSets: todaySets, sessionLabel: "Today" as const };
@@ -29,23 +29,25 @@ export function SetLogger({ exerciseId, onLogged }: SetLoggerProps) {
       lastSets: priorSets,
       sessionLabel: priorSets.length > 0 ? ("Last workout" as const) : null,
     };
-  }, [data.workouts, data.activeWorkoutId, exerciseId]);
+  }, [data.workouts, workoutId, exerciseId]);
 
   const prefill = getLastSetForExercise(
     data.workouts,
     exerciseId,
-    data.activeWorkoutId
+    workoutId
   );
 
-  const [weight, setWeight] = useState(prefill?.weight ?? 0);
-  const [reps, setReps] = useState(prefill?.reps ?? 8);
+  const [weightStr, setWeightStr] = useState(
+    prefill ? String(prefill.weight) : ""
+  );
+  const [repsStr, setRepsStr] = useState(prefill ? String(prefill.reps) : "8");
   const [flash, setFlash] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (prefill) {
-      setWeight(prefill.weight);
-      setReps(prefill.reps);
+      setWeightStr(String(prefill.weight));
+      setRepsStr(String(prefill.reps));
     }
   }, [exerciseId, prefill?.weight, prefill?.reps]);
 
@@ -56,20 +58,30 @@ export function SetLogger({ exerciseId, onLogged }: SetLoggerProps) {
     []
   );
 
+  const parsedWeight = parseFloat(weightStr);
+  const parsedReps = parseInt(repsStr, 10);
+  const weight = Number.isFinite(parsedWeight) ? parsedWeight : 0;
+  const reps = Number.isFinite(parsedReps) ? parsedReps : 0;
+
   const logSet = useCallback(() => {
     if (weight <= 0 || reps <= 0) return;
-    addSet(exerciseId, weight, reps);
+    addSet(exerciseId, weight, reps, workoutId);
     setFlash(true);
     if (flashTimer.current) clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setFlash(false), 400);
     onLogged?.();
-  }, [addSet, exerciseId, weight, reps, onLogged]);
+  }, [addSet, exerciseId, weight, reps, workoutId, onLogged]);
 
-  const adjustWeight = (delta: number) =>
-    setWeight((w) => Math.max(0, Math.round((w + delta) * 10) / 10));
+  const adjustWeight = (delta: number) => {
+    const base = weight > 0 ? weight : 0;
+    const next = Math.max(0, Math.round((base + delta) * 10) / 10);
+    setWeightStr(next > 0 ? String(next) : "");
+  };
 
-  const adjustReps = (delta: number) =>
-    setReps((r) => Math.max(1, r + delta));
+  const adjustReps = (delta: number) => {
+    const base = reps > 0 ? reps : 1;
+    setRepsStr(String(Math.max(1, base + delta)));
+  };
 
   if (!exercise) return null;
 
@@ -97,11 +109,13 @@ export function SetLogger({ exerciseId, onLogged }: SetLoggerProps) {
               −
             </button>
             <input
-              type="number"
+              type="text"
               inputMode="decimal"
-              value={weight || ""}
-              onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+              value={weightStr}
+              onChange={(e) => setWeightStr(e.target.value)}
+              placeholder="0"
               className="h-14 min-w-0 flex-1 rounded-xl border border-surface-border bg-surface text-center text-2xl font-bold text-white"
+              aria-label="Weight in pounds"
             />
             <button
               type="button"
@@ -139,11 +153,12 @@ export function SetLogger({ exerciseId, onLogged }: SetLoggerProps) {
               −
             </button>
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              value={reps}
-              onChange={(e) => setReps(parseInt(e.target.value, 10) || 1)}
+              value={repsStr}
+              onChange={(e) => setRepsStr(e.target.value)}
               className="h-14 min-w-0 flex-1 rounded-xl border border-surface-border bg-surface text-center text-2xl font-bold text-white"
+              aria-label="Reps"
             />
             <button
               type="button"
@@ -162,8 +177,11 @@ export function SetLogger({ exerciseId, onLogged }: SetLoggerProps) {
           flash ? "scale-[0.97] ring-2 ring-accent" : ""
         }`}
         onClick={logSet}
+        disabled={weight <= 0 || reps <= 0}
       >
-        {flash ? "Logged ✓" : `Log Set · ${weight}×${reps}`}
+        {flash
+          ? "Logged ✓"
+          : `Log Set${weight > 0 && reps > 0 ? ` · ${weight}×${reps}` : ""}`}
       </Button>
     </div>
   );
